@@ -1,66 +1,74 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# KeepNotes
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Google Keep–style notes app built with **Vue 3** and **Laravel**. Users sign up, write rich-text notes, set reminders, and move notes between Notes, Reminders, Archive and Trash. Originally built as a client project.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Notes** – create, edit and search notes with a rich-text editor (TinyMCE)
+- **Reminders** – set a date and time on a note and get an in-app alert
+- **Archive & Trash** – archive notes, move them to the trash, restore them, or delete them permanently (soft deletes)
+- **Accounts** – registration, login and logout with Laravel Fortify and Sanctum (hashed passwords)
+- **Private by default** – every note belongs to a user; the API only ever returns or changes the signed-in user's own notes
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tech stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Layer | Tools |
+| --- | --- |
+| Frontend | Vue 3, Vue Router, Pinia, Vuetify 3, TinyMCE, Axios, Vite |
+| Backend | Laravel 9 (PHP 8), Laravel Fortify, Laravel Sanctum (SPA cookie auth) |
+| Database | MySQL |
+| Tests | PHPUnit feature tests (SQLite in-memory) |
 
-## Learning Laravel
+## How it works
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+```
+Vue 3 SPA  ──(Axios, Sanctum session cookie)──▶  Laravel API  ──▶  MySQL
+```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- All note endpoints (`/api/get_notes`, `/api/add_note`, `/api/edit_note`, `/api/edit_action`) sit behind `auth:sanctum`.
+- Queries go through `$request->user()->notes()`, so a user can never read or change someone else's note — those requests return **404**.
+- Input is validated; invalid data returns **422** with messages, which the frontend shows in a popup.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Running it locally
 
-## Laravel Sponsors
+Requirements: PHP 8.0+, Composer, Node.js, MySQL.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+```bash
+composer install
+cp .env.example .env          # then set DB_DATABASE, DB_USERNAME, DB_PASSWORD
+php artisan key:generate
+php artisan migrate
 
-### Premium Partners
+npm install
+npm run dev                   # Vite dev server
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+php artisan serve             # http://127.0.0.1:8000
+```
 
-## Contributing
+## Tests
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+php artisan test
+```
 
-## Code of Conduct
+The feature tests in `tests/Feature/NotesSecurityTest.php` check that:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- guests cannot use the notes API (401)
+- users only see their own notes
+- users cannot edit or trash another user's note (404)
+- invalid input returns validation errors (422)
+- long notes are saved in full
 
-## Security Vulnerabilities
+## Security fixes (Oct 2026)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+The first version had a few problems that were fixed and covered by tests:
 
-## License
+- note endpoints were public → now require login
+- notes were not tied to a user → added `user_id` and scoped every query
+- an old lookup route compared plain-text passwords → removed (Fortify only)
+- note content was limited to 255 characters → now `LONGTEXT`
+- save errors were silently ignored → validation + error messages
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Author
+
+Michael C. Leonida — [Portfolio](https://micleoportfolio.netlify.app/)
